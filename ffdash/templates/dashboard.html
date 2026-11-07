@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1419">
+  <title>My Fantasy Teams</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>My Fantasy Teams</h1>
+    <p class="sub">Week {{ dash.week }} · updated {{ updated }}</p>
+  </div>
+  <a class="btn" href="?refresh=1">Refresh</a>
+</header>
+
+<section class="summary">
+  {% for lg in dash.leagues %}
+  <a class="chip" href="#lg{{ loop.index }}">
+    <span class="badge {{ lg.platform|lower }}">{{ lg.platform }}</span>
+    <span class="chip-name">{{ lg.name }}</span>
+    {% if lg.error %}<span class="dot danger" title="error"></span>
+    {% elif lg.matchup %}
+      {% set up = lg.matchup.my_points >= lg.matchup.opp_points %}
+      <span class="chip-score {{ 'win' if up else 'lose' }}">{{ lg.matchup.my_points|pts }}–{{ lg.matchup.opp_points|pts }}</span>
+    {% endif %}
+    {% if lg.warnings %}<span class="dot {{ 'danger' if lg.warnings|selectattr('level','eq','danger')|list else 'caution' }}"></span>{% endif %}
+  </a>
+  {% endfor %}
+</section>
+
+{% for lg in dash.leagues %}
+<article class="card" id="lg{{ loop.index }}">
+  <div class="card-head">
+    <div>
+      <span class="badge {{ lg.platform|lower }}">{{ lg.platform }}</span>
+      {% if lg.league_type %}<span class="badge type">{{ lg.league_type }}</span>{% endif %}
+      <h2><a href="{{ lg.url }}" target="_blank" rel="noopener">{{ lg.name }}</a></h2>
+      {% if lg.team_name %}<p class="sub">{{ lg.team_name }}</p>{% endif %}
+    </div>
+    {% if not lg.error %}
+    <div class="record">
+      <strong>{{ lg.record }}</strong>
+      <span class="sub">{% if lg.standing %}#{{ lg.standing }} of {{ lg.num_teams }} · {% endif %}{{ '%.1f'|format(lg.points_for) }} PF</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if lg.error %}
+    <div class="alert danger">{{ lg.error }}</div>
+  {% else %}
+    {% if lg.matchup %}
+    {% set up = lg.matchup.my_points >= lg.matchup.opp_points %}
+    <div class="matchup">
+      <div><span class="sub">You</span><b class="{{ 'win' if up else 'lose' }}">{{ lg.matchup.my_points|pts }}</b></div>
+      <span class="vs">vs</span>
+      <div class="right"><span class="sub">{{ lg.matchup.opp_name }}</span><b>{{ lg.matchup.opp_points|pts }}</b></div>
+    </div>
+    {% endif %}
+
+    {% if lg.warnings %}
+    <ul class="warnings">
+      {% for w in lg.warnings %}<li class="alert {{ w.level }}">{{ w.message }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <div class="alert ok">Lineup looks good: no byes, injuries, or empty slots.</div>
+    {% endif %}
+
+    <table class="roster">
+      <thead><tr><th>Slot</th><th>Player</th><th class="num">Pts</th></tr></thead>
+      <tbody>
+      {% for p in lg.starters %}
+        {% set bye = p.bye_week == lg.week %}
+        <tr class="{{ 'bad' if bye or p.injury in ['Out','IR','Doubtful','Sus'] else 'meh' if p.injury == 'Questionable' else '' }}">
+          <td class="slot">{{ p.slot }}</td>
+          <td>
+            <span class="pname">{{ p.name }}</span>
+            <span class="meta">{{ p.position }} · {{ p.team }}{% if bye %} · <b>BYE</b>{% endif %}{% if p.injury %} · <b class="inj">{{ p.injury }}</b>{% endif %}</span>
+          </td>
+          <td class="num">{{ p.points|pts }}</td>
+        </tr>
+      {% endfor %}
+      {% for slot in lg.empty_slots %}
+        <tr class="bad"><td class="slot">{{ slot }}</td><td><span class="pname">— Empty —</span></td><td class="num">–</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <details>
+      <summary>Bench{% if lg.bench|selectattr('slot','eq','TAXI')|list %}, taxi{% endif %} &amp; IR ({{ lg.bench|length }})</summary>
+      <table class="roster">
+        <tbody>
+        {% for p in lg.bench|sort(attribute='slot')|sort(attribute='position') %}
+          <tr>
+            <td class="slot">{{ p.slot }}</td>
+            <td>
+              <span class="pname">{{ p.name }}</span>
+              <span class="meta">{{ p.position }} · {{ p.team }}{% if p.bye_week == lg.week %} · <b>BYE</b>{% endif %}{% if p.injury %} · <b class="inj">{{ p.injury }}</b>{% endif %}</span>
+            </td>
+            <td class="num">{{ p.points|pts }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
+</article>
+{% endfor %}
+
+{% if dash.exposure %}
+<article class="card">
+  <h2>Players you own in more than one league</h2>
+  <p class="sub">If one of these players gets hurt, it hits several of your teams at once.</p>
+  <table class="roster">
+    <tbody>
+    {% for x in dash.exposure %}
+      <tr>
+        <td>
+          <span class="pname">{{ x.name }}</span>
+          <span class="meta">{{ x.position }} · {{ x.team }}{% if x.injury %} · <b class="inj">{{ x.injury }}</b>{% endif %}</span>
+        </td>
+        <td class="right sub">{{ x.leagues|join(', ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endif %}
+
+<footer class="sub">Data from Sleeper and ESPN. Refreshes every 2 minutes or when you tap Refresh.</footer>
+</body>
+</html>
