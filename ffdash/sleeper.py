@@ -8,10 +8,10 @@ from pathlib import Path
 import requests
 
 from .cache import cached
-from .models import League, Matchup, Player, player_key
+from .models import League, Matchup, Player, Team, player_key
 
 API = "https://api.sleeper.app/v1"
-PLAYERS_FILE = Path(__file__).resolve().parent.parent / "cache" / "sleeper_players.json"
+PLAYERS_FILE = Path(__file__).resolve().parent.parent / "cache" / "sleeper_players_v2.json"
 LEAGUE_TYPES = {0: "redraft", 1: "keeper", 2: "dynasty"}
 SLOT_NAMES = {"SUPER_FLEX": "SFLEX", "REC_FLEX": "W/T", "WRRB_FLEX": "W/R"}
 
@@ -43,6 +43,7 @@ def players_db() -> dict[str, dict]:
             "injury": p.get("injury_status") or "",
             "depth_pos": p.get("depth_chart_position") or "",
             "depth": p.get("depth_chart_order"),
+            "age": p.get("age"),
         }
         for pid, p in raw.items()
         if p.get("position") in ("QB", "RB", "WR", "TE", "K", "DEF") or pid.isalpha()
@@ -64,6 +65,8 @@ def _player(pid: str, slot: str, db: dict, byes: dict, points: dict) -> Player:
         injury=p["injury"],
         bye_week=byes.get(p["team"]),
         points=points.get(pid),
+        pid=pid,
+        age=p.get("age"),
     )
 
 
@@ -135,11 +138,24 @@ def _fill_league(league: League, lg: dict, uid: str, db: dict, byes: dict) -> No
             opp_roster = next(r for r in rosters if r["roster_id"] == opp_m["roster_id"])
             league.matchup = Matchup(my_m.get("points") or 0, team_name(opp_roster), opp_m.get("points") or 0)
 
+    rec = (lg.get("scoring_settings") or {}).get("rec", 1.0)
+    league.scoring = "ppr" if rec >= 1 else "half" if rec >= 0.5 else "std"
+    league.te_premium = float((lg.get("scoring_settings") or {}).get("bonus_rec_te") or 0)
+    league.league_id = lid
+    league.raw_scoring = lg.get("scoring_settings") or {}
+    league.raw_positions = lg.get("roster_positions") or []
+
     for r in rosters:
+        reserve_r, taxi_r = set(r.get("reserve") or []), set(r.get("taxi") or [])
+        team_players = []
         for pid in r.get("players") or []:
             p = db.get(pid)
             if p:
                 league.rostered.add(player_key(p["name"], p["pos"]))
+            slot = "IR" if pid in reserve_r else "TAXI" if pid in taxi_r else "BN"
+            team_players.append(_player(pid, slot, db, byes, {}))
+        if r is not mine:
+            league.teams.append(Team(team_name(r), team_players))
 
     # Lineup: starters line up with the non-bench roster_positions. The weekly matchup
     # holds the real current lineup; the roster's own "starters" can be stale.
@@ -160,3 +176,4 @@ def _fill_league(league: League, lg: dict, uid: str, db: dict, byes: dict) -> No
             continue
         slot = "IR" if pid in reserve else "TAXI" if pid in taxi else "BN"
         league.players.append(_player(pid, slot, db, byes, points))
+    league.teams.insert(0, Team(league.team_name, league.players, is_me=True))

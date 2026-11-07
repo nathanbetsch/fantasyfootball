@@ -15,7 +15,7 @@ def player_key(name: str, position: str) -> str:
     return f"{n}|{pos}"
 
 
-@dataclass
+@dataclass(eq=False)  # compare players by identity
 class Player:
     name: str
     position: str
@@ -24,6 +24,10 @@ class Player:
     injury: str = ""  # "Questionable", "Out", "IR", ...
     bye_week: int | None = None
     points: float | None = None  # this week's points, if known
+    pid: str = ""  # Sleeper player id (also filled in for ESPN players by name match)
+    age: int | None = None
+    proj: float = 0.0  # projected points this week (league scoring)
+    ros: float = 0.0  # projected points rest of season (league scoring)
 
     @property
     def is_starter(self) -> bool:
@@ -48,6 +52,13 @@ class Matchup:
 
 
 @dataclass
+class Team:
+    name: str
+    players: list[Player]
+    is_me: bool = False
+
+
+@dataclass
 class League:
     platform: str  # "Sleeper" or "ESPN"
     name: str
@@ -69,6 +80,13 @@ class League:
     # player_keys rostered by ANY team in the league (to know who's on waivers)
     rostered: set[str] = field(default_factory=set)
     starting_slots: list[str] = field(default_factory=list)  # e.g. QB, RB, RB, ..., SFLEX
+    teams: list[Team] = field(default_factory=list)  # every team incl. mine
+    scoring: str = "ppr"  # ppr | half | std
+    te_premium: float = 0.0  # extra points per TE reception
+    league_id: str = ""
+    raw_scoring: dict = field(default_factory=dict)  # platform scoring settings (Sleeper keys)
+    raw_positions: list[str] = field(default_factory=list)  # platform roster slots, incl. BN
+    slug: str = ""
 
     def is_available(self, key: str) -> bool:
         return not self.error and key not in self.rostered

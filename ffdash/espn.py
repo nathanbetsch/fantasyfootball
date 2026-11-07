@@ -7,7 +7,7 @@ from collections import Counter
 import requests
 
 from .byes import espn_team_ids
-from .models import League, Matchup, Player, player_key
+from .models import League, Matchup, Player, Team, player_key
 
 API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{league_id}"
 
@@ -110,13 +110,35 @@ def fetch_league(league_id: str, season: int, espn_s2: str, swid: str, league_ty
         ))
         filled[slot_id] += 1
 
-    # Who is rostered anywhere in the league (everyone else is on waivers / FA)
+    # Every team's roster (for trades), and who is rostered anywhere (for waivers)
+    league.teams.append(Team(league.team_name, league.players, is_me=True))
     for t in teams:
+        others = []
         for e in t.get("roster", {}).get("entries", []):
             pl = e.get("playerPoolEntry", {}).get("player", {})
             pos = POSITIONS.get(pl.get("defaultPositionId"))
-            if pos:
-                league.rostered.add(player_key(pl.get("fullName", ""), pos))
+            if not pos:
+                continue
+            league.rostered.add(player_key(pl.get("fullName", ""), pos))
+            if t is not mine:
+                team = pro_teams.get(pl.get("proTeamId"), "FA")
+                others.append(Player(
+                    name=pl.get("fullName", "Unknown"), position=pos, team=team,
+                    slot="IR" if e.get("lineupSlotId") == 21 else "BN",
+                    injury=INJURY.get(pl.get("injuryStatus") or "", ""), bye_week=byes.get(team),
+                ))
+        if t is not mine:
+            league.teams.append(Team(team_name(t), others))
+
+    # Scoring: points per reception (ESPN stat 53); no reception scoring = standard
+    league.scoring = "std"
+    for item in data.get("settings", {}).get("scoringSettings", {}).get("scoringItems", []):
+        if item.get("statId") == 53:
+            rec = item.get("points", 0)
+            league.scoring = "ppr" if rec >= 1 else "half" if rec >= 0.5 else "std"
+            te = (item.get("pointsOverrides") or {}).get("6")  # 6 = TE slot
+            if te is not None:
+                league.te_premium = max(0.0, te - rec)
 
     # Starting slots + empty ones
     counts = data.get("settings", {}).get("rosterSettings", {}).get("lineupSlotCounts", {})

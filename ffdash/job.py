@@ -62,11 +62,16 @@ def main(argv=None) -> int:
 
     from . import feeds, notify, sleeper
     from .alerts import Alert, evaluate
-    from .render import render_site
+    from .projections import Projections
+    from .render import build_pages, write_site
     from .service import build_dashboard
 
     dash = build_dashboard()
     db = sleeper.players_db()
+    proj = Projections(int(os.getenv("SEASON", "2026")), dash.week or 1, db)
+    for lg in dash.leagues:
+        if not lg.error:
+            proj.enrich(lg)
     state = load_state()
     first_run = "injuries" not in state
 
@@ -96,9 +101,9 @@ def main(argv=None) -> int:
 
     sent = notify.send(alerts, os.getenv("NTFY_TOPIC", "").strip(), dashboard_url, dry_run=args.dry_run)
     state["last_run"] = now.isoformat(timespec="minutes")
+    pages = build_pages(dash, db, proj, state, articles, trending, now, static=True)
     save_state(state)
-
-    render_site(Path(args.site), dash, state.get("log", []), result.waiver_ideas, now)
+    write_site(Path(args.site), pages)
     print(f"{now:%a %I:%M %p} ET: {len(dash.leagues)} leagues, {len(result.alerts)} new alerts, "
           f"{sent} notifications {'printed' if args.dry_run else 'sent'}, site -> {args.site}/")
     return 0

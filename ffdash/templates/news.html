@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}News{% endblock %}
+{% block content %}
+<p class="eyebrow">Week {{ week }} · Past 48 hours</p>
+<h1>News</h1>
+<p class="subtitle">What matters for your teams, plus the biggest stories in the league.</p>
+
+<div class="section-title">Fantasy Impact</div>
+<div class="group">
+  {% for s in fantasy %}
+  <a class="story" href="{{ s.url }}" target="_blank" rel="noopener">
+    <div class="kicker"><span class="tag blue">Fantasy</span>{{ s.published|ago }}</div>
+    <h3>{{ s.headline }}</h3>
+    {% if s.description %}<p>{{ s.description }}</p>{% endif %}
+    {% if s.impact %}
+    <div class="impacts">{% for line in s.impact %}<span>{{ line }}</span>{% endfor %}</div>
+    {% endif %}
+  </a>
+  {% else %}
+  <div class="empty">No fantasy-relevant stories in the past 48 hours.</div>
+  {% endfor %}
+</div>
+
+<div class="section-title">Around the NFL</div>
+<div class="group">
+  {% for s in general %}
+  <a class="story small" href="{{ s.url }}" target="_blank" rel="noopener">
+    <div class="kicker">{{ s.published|ago }}</div>
+    <h3>{{ s.headline }}</h3>
+    {% if s.description %}<p>{{ s.description }}</p>{% endif %}
+  </a>
+  {% else %}
+  <div class="empty">No other headlines right now.</div>
+  {% endfor %}
+</div>
+
+{% if alerts %}
+<div class="section-title">Your Alerts <small>{{ alerts|length if alerts|length < 8 else 8 }} most recent</small></div>
+<div class="group">
+  {% for a in alerts[:8] %}
+  <div class="row indent">
+    <div class="icon {{ 'bg-red' if a.priority in ['high','urgent'] else 'bg-indigo' if a.kind == 'news' else 'bg-orange' if a.kind == 'my_player' else 'bg-blue' }}">
+      {% if a.priority in ['high','urgent'] %}!{% elif a.kind == 'news' %}<svg viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M5 6h10M5 10h10M5 14h6"/></svg>{% else %}<svg viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3a5 5 0 0 0-5 5v3l-1.5 3h13L15 11V8a5 5 0 0 0-5-5zM8 17h4"/></svg>{% endif %}
+    </div>
+    <div class="main">
+      <div class="title">{{ a.title }}</div>
+      <div class="meta">{{ a.time|when }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

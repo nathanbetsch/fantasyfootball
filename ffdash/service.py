@@ -75,6 +75,11 @@ def build_dashboard() -> Dashboard:
         if not lg.error:
             _warn(lg)
 
+    # Tab order: LEAGUE_ORDER="We Cummin, LikingGirlsLovinBoys, ..." (unlisted leagues go last)
+    order = [n.strip().lower() for n in os.getenv("LEAGUE_ORDER", "").split(",") if n.strip()]
+    rank = lambda lg: order.index(lg.name.lower()) if lg.name.lower() in order else len(order)
+    leagues.sort(key=rank)  # stable: keeps fetch order for unlisted leagues
+
     owned: dict[str, list[tuple[Player, str]]] = defaultdict(list)
     for lg in leagues:
         for p in lg.players:

@@ -43,6 +43,8 @@ class Article:
     url: str
     published: str
     athletes: list[str]  # player names tagged on the story
+    description: str = ""
+    kind: str = ""  # HeadlineNews, Story, ...
 
 
 @dataclass
@@ -83,6 +85,8 @@ def news() -> list[Article]:
             url=(a.get("links", {}).get("web") or {}).get("href", ""),
             published=a.get("published", ""),
             athletes=[c.get("description", "") for c in a.get("categories", []) if c.get("type") == "athlete"],
+            description=a.get("description", ""),
+            kind=a.get("type", ""),
         ))
     return out
 

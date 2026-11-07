@@ -29,6 +29,7 @@ jobs:
       SEASON: "2026"
       ESPN_LEAGUE_ID: "1423797115"
       ESPN_LEAGUE_TYPE: redraft
+      LEAGUE_ORDER: We Cummin, LikingGirlsLovinBoys, Crocetti Certified Sundays
       DASHBOARD_URL: https://nathanbetsch.github.io/fantasyfootball/
       # Secret: set under Settings > Secrets and variables > Actions
       ESPN_S2: ${{ secrets.ESPN_S2 }}

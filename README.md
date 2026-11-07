@@ -2,11 +2,18 @@
 
 A personal dashboard that puts all of my Sleeper and ESPN fantasy teams on one page.
 
-**Dashboard**
-- Every league's roster, record, standing and this week's matchup score
-- Lineup warnings: empty slots, starters on BYE, starters who are Out/IR/Doubtful (red), or Questionable (yellow)
-- Players I own in more than one league (injury exposure)
-- Waiver ideas: Sleeper's most-added players who are free in at least one of my leagues
+**Four pages, styled like an iPhone app** (tab bar at the bottom)
+- **News:** the top 2–3 fantasy-impact stories of the past 48 hours (with which of your
+  players they affect), plus 1–2 of the biggest general NFL stories, and your recent alerts
+- **One page per league:**
+  1. Your matchup, record and standing
+  2. Lineup fixes: empty slots, byes, injured starters, and "start X over Y" from projections
+  3. Your starters and bench with projections
+  4. Trade ideas to request: offers that are even on a trade calculator but improve your
+     roster without hurting theirs. Dynasty (We Cummin) uses **Dynasty Daddy's trade
+     calculator** with league-infused values (superflex, lineup slots, TE premium, scoring)
+     and its stud-player adjustment; redraft leagues use **FantasyCalc** redraft values.
+  5. Waiver targets: best available players, flagged when trending or filling a need
 
 **Phone alerts (every 30 min, none 1–8 AM Eastern)**
 - One of my players gets worse on the injury report
