@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0f1419">
   <title>My Fantasy Teams</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Fantasy">
+  {% if css_href %}<link rel="stylesheet" href="{{ css_href }}">{% else %}<style>{{ inline_css|safe }}</style>{% endif %}
 </head>
 <body>
 <header class="top">
   <div>
     <h1>My Fantasy Teams</h1>
-    <p class="sub">Week {{ dash.week }} · updated {{ updated }}</p>
+    <p class="sub">Week {{ dash.week }} · updated {{ updated }}{% if not refresh_href %} · refreshes every 30 min{% endif %}</p>
   </div>
-  <a class="btn" href="?refresh=1">Refresh</a>
+  {% if refresh_href %}<a class="btn" href="{{ refresh_href }}">Refresh</a>{% endif %}
 </header>
 
 <section class="summary">
@@ -30,6 +32,41 @@
   </a>
   {% endfor %}
 </section>
+
+{% if alerts %}
+<article class="card">
+  <h2>Recent alerts</h2>
+  <ul class="feed">
+    {% for a in alerts[:12] %}
+    <li class="{{ 'hot' if a.priority in ['high', 'urgent'] else '' }}">
+      <span class="sub">{{ a.time|when }}</span>
+      <b>{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}</a>{% else %}{{ a.title }}{% endif %}</b>
+      <span class="body">{{ a.body }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</article>
+{% endif %}
+
+{% if waiver_ideas %}
+<article class="card">
+  <h2>Waiver ideas</h2>
+  <p class="sub">Most-added players on Sleeper right now who are free in at least one of your leagues.</p>
+  <table class="roster">
+    <tbody>
+    {% for w in waiver_ideas %}
+      <tr>
+        <td>
+          <span class="pname">{{ w.name }}</span>
+          <span class="meta">{{ w.position }} · {{ w.team }} · {{ w.reason }}</span>
+        </td>
+        <td class="right sub">{{ w.leagues|join(', ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endif %}
 
 {% for lg in dash.leagues %}
 <article class="card" id="lg{{ loop.index }}">
@@ -129,6 +166,6 @@
 </article>
 {% endif %}
 
-<footer class="sub">Data from Sleeper and ESPN. Refreshes every 2 minutes or when you tap Refresh.</footer>
+<footer class="sub">Data from Sleeper and ESPN.{% if refresh_href %} Refreshes every 2 minutes or when you tap Refresh.{% else %} No updates 1–8 AM ET.{% endif %}</footer>
 </body>
 </html>

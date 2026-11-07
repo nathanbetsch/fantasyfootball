@@ -7,7 +7,7 @@ from collections import Counter
 import requests
 
 from .byes import espn_team_ids
-from .models import League, Matchup, Player
+from .models import League, Matchup, Player, player_key
 
 API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{league_id}"
 
@@ -110,12 +110,21 @@ def fetch_league(league_id: str, season: int, espn_s2: str, swid: str, league_ty
         ))
         filled[slot_id] += 1
 
-    # Empty starting slots
+    # Who is rostered anywhere in the league (everyone else is on waivers / FA)
+    for t in teams:
+        for e in t.get("roster", {}).get("entries", []):
+            pl = e.get("playerPoolEntry", {}).get("player", {})
+            pos = POSITIONS.get(pl.get("defaultPositionId"))
+            if pos:
+                league.rostered.add(player_key(pl.get("fullName", ""), pos))
+
+    # Starting slots + empty ones
     counts = data.get("settings", {}).get("rosterSettings", {}).get("lineupSlotCounts", {})
-    for sid_str, n in counts.items():
+    for sid_str, n in sorted(counts.items(), key=lambda kv: int(kv[0])):
         sid = int(sid_str)
-        if sid in (20, 21) or sid not in SLOTS:
+        if sid in (20, 21) or sid not in SLOTS or not n:
             continue
+        league.starting_slots += [SLOTS[sid]] * n
         for _ in range(max(0, n - filled[sid])):
             league.empty_slots.append(SLOTS[sid])
     return league

@@ -2,13 +2,44 @@
 
 A personal dashboard that puts all of my Sleeper and ESPN fantasy teams on one page.
 
-**Version 1 (current):**
-- Every league's roster, record, standing and this week's live matchup score
+**Dashboard**
+- Every league's roster, record, standing and this week's matchup score
 - Lineup warnings: empty slots, starters on BYE, starters who are Out/IR/Doubtful (red), or Questionable (yellow)
 - Players I own in more than one league (injury exposure)
-- Mobile-friendly, so it can be opened from a phone on the same Wi-Fi
+- Waiver ideas: Sleeper's most-added players who are free in at least one of my leagues
 
-Planned: waiver pickup suggestions + phone alerts (v2), trade finder (v3).
+**Phone alerts (every 30 min, none 1–8 AM Eastern)**
+- One of my players gets worse on the injury report
+- An NFL starter goes Doubtful/Out/IR → the replacement on his depth chart, per league,
+  marked **PICK UP** when I actually need that position (my starter hurt/on bye, superflex, etc.)
+- Hot trending adds that are available to me
+- News stories that tag one of my players
+
+Alerts only fire on *changes*, so the same news never buzzes twice.
+
+Planned: trade finder (v3).
+
+## Runs free on GitHub (no PC needed)
+
+`.github/workflows/update.yml` runs every 30 minutes on GitHub Actions: it pulls the
+leagues + NFL injury report, news and trending adds, sends ntfy pushes, and publishes the
+dashboard to GitHub Pages at https://nathanbetsch.github.io/fantasyfootball/.
+
+One-time setup:
+1. **Make the repo public** (free Pages needs it): Settings → General → Danger Zone →
+   Change visibility. No secrets are in the code; `.env` is never committed.
+2. **Turn on Pages:** Settings → Pages → Source: **GitHub Actions**.
+3. **Add secrets:** Settings → Secrets and variables → Actions → New repository secret:
+   `ESPN_S2`, `ESPN_SWID`, `NTFY_TOPIC` (copy each value from your `.env`).
+4. **Phone:** install **ntfy** (App Store / Play Store), tap **+**, subscribe to the topic
+   name from `NTFY_TOPIC`. Keep the default server `ntfy.sh`.
+5. **First run:** Actions tab → *Update dashboard & alerts* → **Run workflow**. You should get
+   a "Fantasy alerts are on" push, and the dashboard link goes live within a minute or two.
+
+Test locally without sending anything:
+```
+.venv\Scripts\python -m ffdash.job --dry-run --force
+```
 
 ## Run it
 

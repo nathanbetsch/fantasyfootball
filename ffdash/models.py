@@ -4,6 +4,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+def player_key(name: str, position: str) -> str:
+    """Cross-platform identity (names + position; IDs differ per platform)."""
+    n = "".join(c for c in name.lower() if c.isalnum())
+    for suffix in ("jr", "sr", "iii", "ii", "iv"):
+        if n.endswith(suffix) and len(n) > len(suffix) + 3:
+            n = n[: -len(suffix)]
+            break
+    pos = {"D/ST": "DEF", "DST": "DEF", "PK": "K"}.get(position.upper(), position.upper())
+    return f"{n}|{pos}"
+
+
 @dataclass
 class Player:
     name: str
@@ -20,13 +31,7 @@ class Player:
 
     @property
     def key(self) -> str:
-        """Cross-platform identity (names + position; IDs differ per platform)."""
-        n = "".join(c for c in self.name.lower() if c.isalnum())
-        for suffix in ("jr", "sr", "ii", "iii", "iv"):
-            if n.endswith(suffix) and len(n) > len(suffix) + 3:
-                n = n[: -len(suffix)]
-                break
-        return f"{n}|{self.position}"
+        return player_key(self.name, self.position)
 
 
 @dataclass
@@ -61,6 +66,16 @@ class League:
     warnings: list[Warning] = field(default_factory=list)
     error: str = ""
     url: str = ""
+    # player_keys rostered by ANY team in the league (to know who's on waivers)
+    rostered: set[str] = field(default_factory=set)
+    starting_slots: list[str] = field(default_factory=list)  # e.g. QB, RB, RB, ..., SFLEX
+
+    def is_available(self, key: str) -> bool:
+        return not self.error and key not in self.rostered
+
+    @property
+    def superflex(self) -> bool:
+        return "SFLEX" in self.starting_slots or self.starting_slots.count("QB") > 1
 
     @property
     def record(self) -> str:

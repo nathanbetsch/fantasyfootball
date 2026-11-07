@@ -79,3 +79,8 @@ tr.meh td { background: var(--caution-bg); }
 details { margin-top: 10px; }
 summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; padding: 4px 0; }
 footer { text-align: center; padding: 8px 0 24px; }
+.feed { list-style: none; padding: 0; margin: 8px 0 0; }
+.feed li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.feed li.hot b { color: var(--danger); }
+.feed a { color: inherit; }
+.feed .body { white-space: pre-line; font-size: 13px; color: var(--muted); }

@@ -8,7 +8,7 @@ from pathlib import Path
 import requests
 
 from .cache import cached
-from .models import League, Matchup, Player
+from .models import League, Matchup, Player, player_key
 
 API = "https://api.sleeper.app/v1"
 PLAYERS_FILE = Path(__file__).resolve().parent.parent / "cache" / "sleeper_players.json"
@@ -41,8 +41,11 @@ def players_db() -> dict[str, dict]:
             "pos": p.get("position") or "",
             "team": p.get("team") or "FA",
             "injury": p.get("injury_status") or "",
+            "depth_pos": p.get("depth_chart_position") or "",
+            "depth": p.get("depth_chart_order"),
         }
         for pid, p in raw.items()
+        if p.get("position") in ("QB", "RB", "WR", "TE", "K", "DEF") or pid.isalpha()
     }
     PLAYERS_FILE.parent.mkdir(exist_ok=True)
     PLAYERS_FILE.write_text(json.dumps(slim), encoding="utf-8")
@@ -132,9 +135,16 @@ def _fill_league(league: League, lg: dict, uid: str, db: dict, byes: dict) -> No
             opp_roster = next(r for r in rosters if r["roster_id"] == opp_m["roster_id"])
             league.matchup = Matchup(my_m.get("points") or 0, team_name(opp_roster), opp_m.get("points") or 0)
 
+    for r in rosters:
+        for pid in r.get("players") or []:
+            p = db.get(pid)
+            if p:
+                league.rostered.add(player_key(p["name"], p["pos"]))
+
     # Lineup: starters line up with the non-bench roster_positions. The weekly matchup
     # holds the real current lineup; the roster's own "starters" can be stale.
     slots = [p for p in lg.get("roster_positions", []) if p != "BN"]
+    league.starting_slots = [SLOT_NAMES.get(s, s) for s in slots]
     starters = (my_m or {}).get("starters") or mine.get("starters") or []
     for slot, pid in zip(slots, starters):
         slot = SLOT_NAMES.get(slot, slot)

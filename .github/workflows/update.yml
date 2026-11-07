@@ -1,0 +1,76 @@
+name: Update dashboard & alerts
+
+on:
+  schedule:
+    # Every 30 min, skipping roughly 1-8 AM Eastern (cron is UTC). The script also
+    # checks Eastern time itself, so daylight-saving shifts are handled exactly.
+    - cron: "*/30 0-5,12-23 * * *"
+  workflow_dispatch: {}   # "Run workflow" button for a manual refresh
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ff-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      # Not secret: fine to keep here
+      SLEEPER_USERNAME: n8erdays
+      SEASON: "2026"
+      ESPN_LEAGUE_ID: "1423797115"
+      ESPN_LEAGUE_TYPE: redraft
+      DASHBOARD_URL: https://nathanbetsch.github.io/fantasyfootball/
+      # Secret: set under Settings > Secrets and variables > Actions
+      ESPN_S2: ${{ secrets.ESPN_S2 }}
+      ESPN_SWID: ${{ secrets.ESPN_SWID }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Remembers last run's injury statuses / seen news so alerts only fire on changes
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: ff-state-${{ github.run_id }}
+          restore-keys: ff-state-
+
+      - name: Refresh leagues, send alerts, build page
+        id: job
+        run: python -m ffdash.job --site site ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+
+      - name: Save state
+        if: steps.job.outputs.skipped != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: cache
+          key: ff-state-${{ github.run_id }}
+
+      - if: steps.job.outputs.skipped != 'true'
+        uses: actions/configure-pages@v5
+
+      - if: steps.job.outputs.skipped != 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - if: steps.job.outputs.skipped != 'true'
+        id: deploy
+        uses: actions/deploy-pages@v4

@@ -14,16 +14,13 @@ from flask import Flask, redirect, render_template, request, url_for
 load_dotenv()
 
 from ffdash import cache  # noqa: E402
+from ffdash.job import load_state  # noqa: E402
+from ffdash.render import fmt_pts, fmt_time  # noqa: E402
 from ffdash.service import build_dashboard  # noqa: E402
 
 app = Flask(__name__, template_folder="ffdash/templates", static_folder="ffdash/static")
-
-POS_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 5, "DEF": 6}
-
-
-@app.template_filter("pts")
-def pts(v):
-    return "–" if v is None else f"{v:.1f}"
+app.add_template_filter(fmt_pts, "pts")
+app.add_template_filter(fmt_time, "when")
 
 
 @app.route("/")
@@ -35,7 +32,10 @@ def index():
     return render_template(
         "dashboard.html",
         dash=dash,
-        pos_order=POS_ORDER,
+        alerts=load_state().get("log", []),
+        waiver_ideas=[],
+        css_href=url_for("static", filename="style.css"),
+        refresh_href="?refresh=1",
         updated=datetime.now().strftime("%a %I:%M %p").replace(" 0", " "),
     )
 
